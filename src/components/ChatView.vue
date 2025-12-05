@@ -25,6 +25,7 @@
 			</TransitionWrapper>
 
 			<ThreadHeader v-if="isSidebar && threadId" standalone />
+			<PinnedMessage v-else-if="hasPinnedMessages" />
 
 			<MessagesList
 				v-model:is-chat-scrolled-to-bottom="isChatScrolledToBottom"
@@ -73,6 +74,7 @@ import IconAlertOctagonOutline from 'vue-material-design-icons/AlertOctagonOutli
 import IconChevronDoubleDown from 'vue-material-design-icons/ChevronDoubleDown.vue'
 import GuestWelcomeWindow from './GuestWelcomeWindow.vue'
 import MessagesList from './MessagesList/MessagesList.vue'
+import PinnedMessage from './MessagesList/PinnedMessage/PinnedMessage.vue'
 import NewMessage from './NewMessage/NewMessage.vue'
 import NewMessageUploadEditor from './NewMessage/NewMessageUploadEditor.vue'
 import ThreadHeader from './RightSidebar/Threads/ThreadHeader.vue'
@@ -82,6 +84,7 @@ import { useGetThreadId } from '../composables/useGetThreadId.ts'
 import { useGetToken } from '../composables/useGetToken.ts'
 import { CONVERSATION, PARTICIPANT } from '../constants.ts'
 import { getTalkConfig } from '../services/CapabilitiesManager.ts'
+import { hasTalkFeature } from '../services/CapabilitiesManager.ts'
 import { EventBus } from '../services/EventBus.ts'
 import { useActorStore } from '../stores/actor.ts'
 import { useChatExtrasStore } from '../stores/chatExtras.ts'
@@ -105,6 +108,7 @@ export default {
 		IconAccountOutline,
 		IconAlertOctagonOutline,
 		IconChevronDoubleDown,
+		PinnedMessage,
 	},
 
 	props: {
@@ -188,6 +192,10 @@ export default {
 			return this.isGuestWithoutDisplayName
 				&& !this.conversation.hasCall
 				&& !this.conversation.objectType !== CONVERSATION.OBJECT_TYPE.VIDEO_VERIFICATION
+		},
+
+		hasPinnedMessages() {
+			return this.conversation.lastPinnedId !== 0
 		},
 	},
 
