@@ -23,12 +23,24 @@ const route = useRoute()
 const token = useGetToken()
 const sharedItemsStore = useSharedItemsStore()
 const conversation = computed(() => store.getters.conversation(token.value))
-const pinnedMessage = computed(() => {
-	if (!sharedItemsStore.sharedItems(token.value).pinned) {
-		return null
-	}
-	return Object.values(sharedItemsStore.sharedItems(token.value).pinned).find((item) => +item.id === conversation.value.lastPinnedId)
+
+// Array of all pinned messages
+const pinnedMessages = computed(() => {
+    if (!sharedItemsStore.sharedItems(token.value).pinned) {
+        return []
+    }
+    return Object.values(sharedItemsStore.sharedItems(token.value).pinned) || []
 })
+
+// The pinned message to be displayed (the latest one that is not hidden)
+const pinnedMessage = computed(() => {
+    if (!pinnedMessages.value.length) {
+        return null
+    }
+	return pinnedMessages.value.find((item) => +item.id === conversation.value.lastPinnedId
+        && item.id !== conversation.value.hiddenPinnedId)
+})
+
 const isModerator = computed(() => store.getters.isModerator)
 const isInThread = computed(() => pinnedMessage.value?.threadId !== pinnedMessage.value?.id)
 const to = computed(() => ({
@@ -39,7 +51,7 @@ const to = computed(() => ({
 }))
 
 /**
- *
+ * Handle click on pinned message
  */
 function handlePinClick() {
 	if (route.hash === '#message_' + pinnedMessage.value?.id) {
@@ -47,8 +59,18 @@ function handlePinClick() {
 		EventBus.emit('focus-message', { messageId: pinnedMessage.value?.id })
 	}
 }
+
+/**
+ * Handle hiding the pinned message
+ */
+function handleHidePinnedMessage() {
+    sharedItemsStore.handleHidePinnedMessage(token.value, pinnedMessage.value!.id)
+}
+
 onMounted(() => {
 	if (!sharedItemsStore.sharedItems(token.value).pinned) {
+        // This is only needed on relaod for each conversation
+        // Afterwards, pinned messages are added/removed via system messages
 		sharedItemsStore.fetchPinnedMessages(token.value)
 	}
 })
@@ -78,7 +100,7 @@ onMounted(() => {
 				<NcActionButton
 					close-after-click
 					:title="t('spreed', 'Discard pin')"
-					@click.stop="sharedItemsStore.unpinMessage(token, pinnedMessage.id)">
+					@click.stop="handleHidePinnedMessage">
 					<template #icon>
 						<IconClose :size="20" />
 					</template>
@@ -88,7 +110,7 @@ onMounted(() => {
 					v-if="isModerator"
 					close-after-click
 					:title="t('spreed', 'Unpin for all')"
-					@click="() => {}">
+					@click.stop="sharedItemsStore.handleUnpinMessage(token, pinnedMessage.id)">
 					<template #icon>
 						<IconPinOff :size="20" />
 					</template>
